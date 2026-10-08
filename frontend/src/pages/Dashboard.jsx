@@ -1621,6 +1621,7 @@ function BoostPerksSection({ guildId, guildName, channels, roles, user }) {
   const [settings, setSettings] = useState({
     enabled: true,
     redeemChannelId: '',
+    logChannelId: '',
     dmMessage: '🎉 **Thank you for boosting {server}!**\n\nHere is your exclusive custom role perk code:\n🔑 **`{code}`**\n\nHead over to {channel} and use `!redeem {code}` or `!radeem {code}` to customize and create your personal custom role with emojis & color!',
     baseRoleId: ''
   });
@@ -1704,6 +1705,7 @@ function BoostPerksSection({ guildId, guildName, channels, roles, user }) {
     try {
       const res = await api.saveBoostPerksSettings(guildId, settings);
       setSaveMsg('✅ Boost Perks settings saved successfully!');
+      if (res.settings) setSettings(res.settings);
       if (res.stats) setStats(res.stats);
       setTimeout(() => setSaveMsg(''), 3000);
     } catch (err) {
@@ -2139,7 +2141,25 @@ function BoostPerksSection({ guildId, guildName, channels, roles, user }) {
                 </select>
               </label>
               <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.35)', marginTop: '4px' }}>
-                Channel where boosters will type <code style={{ color: '#f43f5e' }}>!redeem &lt;code&gt;</code> to claim their custom role.
+                Channel where boosters type <code style={{ color: '#f43f5e' }}>!redeem &lt;code&gt;</code> to claim their custom role.
+              </div>
+            </div>
+
+            {/* Dedicated Log Channel Selector */}
+            <div>
+              <label style={labelStyle}>
+                <span style={labelTextStyle}>📋 Dedicated Booster Perks Log Channel:</span>
+                <select
+                  value={settings.logChannelId || ''}
+                  onChange={e => setSettings(s => ({ ...s, logChannelId: e.target.value }))}
+                  style={selectStyle}
+                >
+                  <option value="">-- No Separate Log Channel (Disabled) --</option>
+                  {channels.map(c => <option key={c.id} value={c.id}>#{c.name}</option>)}
+                </select>
+              </label>
+              <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.35)', marginTop: '4px' }}>
+                Audit logs (who redeemed which code, custom role created, colors, and timestamps) are sent here.
               </div>
             </div>
 
