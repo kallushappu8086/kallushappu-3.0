@@ -278,10 +278,15 @@ function StatsSection({ guildId, guildName, channels }) {
 
       {/* Stats info bar */}
       {stats && (
-        <div style={{ display: 'flex', gap: '16px', marginBottom: '16px', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: '16px', marginBottom: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
           <InfoChip label="Tracked Members" value={stats.totalTrackedMembers || 0} color="#9333ea" />
           <InfoChip label="Period" value={`${stats.startDate} → ${stats.endDate}`} color="#60a5fa" />
           <InfoChip label="Server" value={guildName} color="#f59e0b" />
+          {stats.dbOffline && (
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'rgba(234,179,8,0.12)', border: '1px solid rgba(234,179,8,0.3)', borderRadius: '8px', padding: '6px 12px', fontSize: '0.78rem', color: '#facc15', fontWeight: 600 }}>
+              ⚡ Live Memory Mode (MongoDB Atlas Connecting)
+            </div>
+          )}
         </div>
       )}
 
