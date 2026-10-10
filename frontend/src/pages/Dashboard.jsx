@@ -2985,26 +2985,46 @@ function ManualSendModal({ guildId, codeItem, onClose, onSuccess }) {
 }
 
 /* ─────────── Server Tag Section ─────────── */
-function ServerTagSection({ guildId, channels }) {
+function ServerTagSection({ guildId }) {
   const [settings, setSettings] = useState({
     enabled: false,
     channelId: '',
-    messageTemplate: '🎉 **{user}** just equipped the **{tag}** tag! You\'ve unlocked exclusive community perks.',
+    messageTemplate: '🎉 **{user}** just equipped the **{tag}** tag!',
+    footerText: 'You\'ve unlocked exclusive community perks 🎁',
     embedEnabled: true,
     embedColor: '#5865F2',
     showBanner: true,
     pingUser: true
   });
+  const [channels, setChannels] = useState([]);
+  const [channelsLoading, setChannelsLoading] = useState(true);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
   const [msg, setMsg] = useState('');
 
+  // Fetch channels directly (parent channels have no `type` field so filter breaks)
+  useEffect(() => {
+    setChannelsLoading(true);
+    api.getChannels(guildId)
+      .then(data => setChannels(Array.isArray(data) ? data : []))
+      .catch(() => setChannels([]))
+      .finally(() => setChannelsLoading(false));
+  }, [guildId]);
+
+  // Fetch saved settings
   useEffect(() => {
     setLoading(true);
     api.getServerTagSettings(guildId)
       .then(data => {
-        if (data && Object.keys(data).length > 0) setSettings(s => ({ ...s, ...data }));
+        if (data && Object.keys(data).length > 0) {
+          setSettings(s => ({
+            ...s,
+            ...data,
+            // Ensure footerText has a default if not saved yet
+            footerText: data.footerText ?? s.footerText
+          }));
+        }
       })
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -3015,12 +3035,12 @@ function ServerTagSection({ guildId, channels }) {
     setMsg('');
     try {
       await api.saveServerTagSettings(guildId, settings);
-      setMsg('✅ Settings saved!');
+      setMsg('✅ Settings saved successfully!');
     } catch (e) {
       setMsg('❌ ' + e.message);
     } finally {
       setSaving(false);
-      setTimeout(() => setMsg(''), 3000);
+      setTimeout(() => setMsg(''), 3500);
     }
   };
 
@@ -3029,7 +3049,7 @@ function ServerTagSection({ guildId, channels }) {
     setMsg('');
     try {
       const r = await api.testServerTagAnnouncement(guildId);
-      setMsg('✅ ' + (r.message || 'Test sent!'));
+      setMsg('✅ ' + (r.message || 'Test sent to channel!'));
     } catch (e) {
       setMsg('❌ ' + e.message);
     } finally {
@@ -3037,8 +3057,6 @@ function ServerTagSection({ guildId, channels }) {
       setTimeout(() => setMsg(''), 4000);
     }
   };
-
-  const textChannels = (channels || []).filter(c => c.type === 0 || c.type === 'GUILD_TEXT');
 
   const card = {
     background: 'rgba(255,255,255,0.03)',
@@ -3049,7 +3067,6 @@ function ServerTagSection({ guildId, channels }) {
   };
 
   const rowStyle = { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', marginBottom: '14px' };
-
   const toggle = (field) => setSettings(s => ({ ...s, [field]: !s[field] }));
 
   const ToggleSwitch = ({ on, onClick }) => (
@@ -3073,47 +3090,63 @@ function ServerTagSection({ guildId, channels }) {
   );
 
   if (loading) return (
-    <div style={{ textAlign: 'center', color: 'rgba(255,255,255,0.35)', padding: '60px' }}>Loading settings...</div>
+    <div style={{ textAlign: 'center', color: 'rgba(255,255,255,0.35)', padding: '60px', fontSize: '0.9rem' }}>
+      ⏳ Loading settings...
+    </div>
   );
+
+  const selectedChannelName = channels.find(c => c.id === settings.channelId)?.name;
 
   return (
     <div>
-      {/* Preview Card — looks like the Discord message in the screenshot */}
+
+      {/* ── Live Preview Card ── */}
       <div style={{
-        background: 'linear-gradient(135deg, rgba(88,101,242,0.18) 0%, rgba(13,16,23,0.95) 100%)',
-        border: '1px solid rgba(88,101,242,0.35)',
+        background: 'linear-gradient(135deg, rgba(88,101,242,0.14) 0%, rgba(13,16,23,0.97) 100%)',
+        border: '1px solid rgba(88,101,242,0.3)',
         borderRadius: '16px', padding: '20px 24px', marginBottom: '24px',
-        display: 'flex', alignItems: 'flex-start', gap: '16px',
-        boxShadow: '0 4px 24px rgba(88,101,242,0.18)'
+        boxShadow: '0 4px 24px rgba(88,101,242,0.15)'
       }}>
-        <div style={{ fontSize: '2.2rem', lineHeight: 1 }}>🏷️</div>
-        <div>
-          <div style={{ fontWeight: 800, fontSize: '1.05rem', color: '#fff', marginBottom: '4px' }}>
-            How it will look in Discord
-          </div>
-          <div style={{
-            background: 'rgba(0,0,0,0.35)', border: '1px solid rgba(88,101,242,0.3)',
-            borderLeft: '4px solid #5865F2',
-            borderRadius: '8px', padding: '12px 16px', fontSize: '0.88rem', color: '#e2e8f0', lineHeight: 1.55
-          }}>
-            <span style={{ color: '#5865F2', fontWeight: 700 }}>@YourUser</span>
-            {' (username.ftp) equipped the 🌿 '}🏷️{' tag!'}
-            <div style={{ marginTop: '8px', fontSize: '0.78rem', color: 'rgba(255,255,255,0.4)', borderTop: '1px solid rgba(255,255,255,0.07)', paddingTop: '8px' }}>
-              You've unlocked exclusive community perks 🎁
+        <div style={{ fontWeight: 800, fontSize: '0.82rem', color: 'rgba(88,101,242,0.9)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '12px' }}>
+          👁️ Live Preview — How it looks in Discord
+        </div>
+        {/* Discord-style embed mockup */}
+        <div style={{
+          background: '#2b2d31', borderRadius: '8px', padding: '0',
+          overflow: 'hidden', maxWidth: '480px',
+          borderLeft: `4px solid ${settings.embedColor || '#5865F2'}`
+        }}>
+          <div style={{ padding: '12px 16px 14px' }}>
+            <div style={{ fontSize: '0.9rem', color: '#dbdee1', lineHeight: 1.6, marginBottom: '10px' }}>
+              <span style={{ color: '#5865F2', fontWeight: 700 }}>@Miles Morales</span>
+              {' (milesmorales.ftp) equipped the 🌿 🏷️ tag!'}
             </div>
-          </div>
-          <div style={{ fontSize: '0.74rem', color: 'rgba(255,255,255,0.35)', marginTop: '8px' }}>
-            The bot auto-sends this embed whenever a member equips a server tag.
+            {settings.embedEnabled && settings.footerText && (
+              <div style={{
+                fontSize: '0.76rem', color: 'rgba(255,255,255,0.38)',
+                borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '8px',
+                display: 'flex', alignItems: 'center', gap: '6px'
+              }}>
+                <div style={{ width: '16px', height: '16px', borderRadius: '50%', background: 'rgba(88,101,242,0.5)', flexShrink: 0 }} />
+                {settings.footerText}
+              </div>
+            )}
           </div>
         </div>
+        {selectedChannelName && (
+          <div style={{ fontSize: '0.73rem', color: 'rgba(255,255,255,0.3)', marginTop: '10px' }}>
+            → Will be sent to <span style={{ color: '#818cf8', fontWeight: 700 }}>#{selectedChannelName}</span>
+          </div>
+        )}
       </div>
 
-      {/* Enable / Channel */}
+      {/* ── Configuration Card ── */}
       <div style={card}>
-        <div style={{ fontWeight: 800, fontSize: '1rem', color: '#fff', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div style={{ fontWeight: 800, fontSize: '1rem', color: '#fff', marginBottom: '18px', display: 'flex', alignItems: 'center', gap: '8px' }}>
           <span>⚙️</span> Server Tag Configuration
         </div>
 
+        {/* Enable toggle */}
         <div style={rowStyle}>
           <div>
             <div style={{ fontWeight: 700, fontSize: '0.92rem', color: '#fff' }}>Enable Server Tag Announcements</div>
@@ -3122,41 +3155,56 @@ function ServerTagSection({ guildId, channels }) {
           <ToggleSwitch on={settings.enabled} onClick={() => toggle('enabled')} />
         </div>
 
-        <div style={{ marginTop: '10px' }}>
+        {/* Channel picker */}
+        <div style={{ marginTop: '6px' }}>
           <label style={{ fontSize: '0.78rem', fontWeight: 700, color: 'rgba(255,255,255,0.65)', display: 'block', marginBottom: '7px' }}>
             📢 Announcement Channel
           </label>
-          <select
-            value={settings.channelId}
-            onChange={e => setSettings(s => ({ ...s, channelId: e.target.value }))}
-            style={{
-              width: '100%', background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(88,101,242,0.3)',
-              borderRadius: '10px', padding: '10px 14px', color: settings.channelId ? '#fff' : 'rgba(255,255,255,0.4)',
-              fontSize: '0.88rem', fontFamily: "'Inter',sans-serif", outline: 'none', cursor: 'pointer'
-            }}
-          >
-            <option value=''>— Select a channel —</option>
-            {textChannels.map(c => (
-              <option key={c.id} value={c.id}>#{c.name}</option>
-            ))}
-          </select>
-          <div style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.3)', marginTop: '5px' }}>
+          {channelsLoading ? (
+            <div style={{ padding: '10px 14px', borderRadius: '10px', border: '1px solid rgba(88,101,242,0.2)', background: 'rgba(0,0,0,0.3)', color: 'rgba(255,255,255,0.35)', fontSize: '0.87rem' }}>
+              ⏳ Loading channels...
+            </div>
+          ) : (
+            <select
+              value={settings.channelId}
+              onChange={e => setSettings(s => ({ ...s, channelId: e.target.value }))}
+              style={{
+                width: '100%', background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(88,101,242,0.35)',
+                borderRadius: '10px', padding: '10px 14px',
+                color: settings.channelId ? '#fff' : 'rgba(255,255,255,0.4)',
+                fontSize: '0.88rem', fontFamily: "'Inter',sans-serif", outline: 'none', cursor: 'pointer',
+                appearance: 'none', WebkitAppearance: 'none'
+              }}
+            >
+              <option value=''>— Select a channel ({channels.length} available) —</option>
+              {channels.map(c => (
+                <option key={c.id} value={c.id}>#{c.name}</option>
+              ))}
+            </select>
+          )}
+          {!channelsLoading && channels.length === 0 && (
+            <div style={{ fontSize: '0.73rem', color: '#f87171', marginTop: '5px' }}>
+              ⚠️ No text channels found. Make sure the bot is in the server.
+            </div>
+          )}
+          <div style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.28)', marginTop: '5px' }}>
             The announcement embed will be sent to this channel automatically.
           </div>
         </div>
       </div>
 
-      {/* Message Template */}
+      {/* ── Message Template Card ── */}
       <div style={card}>
         <div style={{ fontWeight: 800, fontSize: '1rem', color: '#fff', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
           <span>✏️</span> Message Template
         </div>
 
+        {/* Main message body */}
         <label style={{ fontSize: '0.78rem', fontWeight: 700, color: 'rgba(255,255,255,0.65)', display: 'block', marginBottom: '7px' }}>
-          Message Text
+          Main Announcement Text
         </label>
         <textarea
-          rows={3}
+          rows={2}
           value={settings.messageTemplate}
           onChange={e => setSettings(s => ({ ...s, messageTemplate: e.target.value }))}
           placeholder='🎉 **{user}** just equipped the **{tag}** tag!'
@@ -3164,20 +3212,44 @@ function ServerTagSection({ guildId, channels }) {
             width: '100%', boxSizing: 'border-box',
             background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.12)',
             borderRadius: '10px', padding: '10px 14px', color: '#fff',
-            fontSize: '0.87rem', fontFamily: "'Inter',sans-serif", outline: 'none', resize: 'vertical', lineHeight: 1.5
+            fontSize: '0.87rem', fontFamily: "'Inter',sans-serif", outline: 'none', resize: 'vertical', lineHeight: 1.5,
+            marginBottom: '14px'
           }}
         />
-        <div style={{ display: 'flex', gap: '16px', marginTop: '8px', flexWrap: 'wrap' }}>
-          {['{user}', '{tag}', '{server}'].map(v => (
-            <span key={v} style={{ fontSize: '0.72rem', background: 'rgba(88,101,242,0.15)', border: '1px solid rgba(88,101,242,0.3)', borderRadius: '6px', padding: '2px 8px', color: '#818cf8', fontFamily: 'monospace', cursor: 'default' }}>{v}</span>
-          ))}
+
+        {/* Footer text */}
+        <label style={{ fontSize: '0.78rem', fontWeight: 700, color: 'rgba(255,255,255,0.65)', display: 'block', marginBottom: '7px' }}>
+          Footer / Subtext (shown below the main message)
+        </label>
+        <input
+          type='text'
+          value={settings.footerText}
+          onChange={e => setSettings(s => ({ ...s, footerText: e.target.value }))}
+          placeholder="You've unlocked exclusive community perks 🎁"
+          style={{
+            width: '100%', boxSizing: 'border-box',
+            background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.12)',
+            borderRadius: '10px', padding: '10px 14px', color: '#fff',
+            fontSize: '0.87rem', fontFamily: "'Inter',sans-serif", outline: 'none'
+          }}
+        />
+        <div style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.28)', marginTop: '5px', marginBottom: '12px' }}>
+          This appears as the embed footer. Leave empty to hide it.
         </div>
-        <div style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.3)', marginTop: '5px' }}>
-          Available variables: {'{user}'} = member, {'{tag}'} = server tag name, {'{server}'} = guild name
+
+        {/* Variable chips */}
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+          <span style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.35)' }}>Variables:</span>
+          {['{user}', '{tag}', '{server}'].map(v => (
+            <span
+              key={v}
+              style={{ fontSize: '0.72rem', background: 'rgba(88,101,242,0.15)', border: '1px solid rgba(88,101,242,0.3)', borderRadius: '6px', padding: '2px 9px', color: '#818cf8', fontFamily: 'monospace', cursor: 'default' }}
+            >{v}</span>
+          ))}
         </div>
       </div>
 
-      {/* Embed Options */}
+      {/* ── Embed Options Card ── */}
       <div style={card}>
         <div style={{ fontWeight: 800, fontSize: '1rem', color: '#fff', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
           <span>🎨</span> Embed Options
@@ -3185,8 +3257,8 @@ function ServerTagSection({ guildId, channels }) {
 
         <div style={rowStyle}>
           <div>
-            <div style={{ fontWeight: 700, fontSize: '0.88rem', color: '#fff' }}>Use Embed (Recommended)</div>
-            <div style={{ fontSize: '0.74rem', color: 'rgba(255,255,255,0.4)', marginTop: '2px' }}>Send a rich Discord embed instead of plain text</div>
+            <div style={{ fontWeight: 700, fontSize: '0.88rem', color: '#fff' }}>Use Rich Embed</div>
+            <div style={{ fontSize: '0.74rem', color: 'rgba(255,255,255,0.4)', marginTop: '2px' }}>Send a styled Discord embed instead of plain text</div>
           </div>
           <ToggleSwitch on={settings.embedEnabled} onClick={() => toggle('embedEnabled')} />
         </div>
@@ -3199,7 +3271,7 @@ function ServerTagSection({ guildId, channels }) {
           <ToggleSwitch on={settings.showBanner} onClick={() => toggle('showBanner')} />
         </div>
 
-        <div style={rowStyle}>
+        <div style={{ ...rowStyle, marginBottom: '6px' }}>
           <div>
             <div style={{ fontWeight: 700, fontSize: '0.88rem', color: '#fff' }}>Ping the Member</div>
             <div style={{ fontSize: '0.74rem', color: 'rgba(255,255,255,0.4)', marginTop: '2px' }}>Mention (@) the member in the announcement</div>
@@ -3207,9 +3279,10 @@ function ServerTagSection({ guildId, channels }) {
           <ToggleSwitch on={settings.pingUser} onClick={() => toggle('pingUser')} />
         </div>
 
+        {/* Color picker — only when embed is on */}
         {settings.embedEnabled && (
-          <div style={{ marginTop: '6px' }}>
-            <label style={{ fontSize: '0.78rem', fontWeight: 700, color: 'rgba(255,255,255,0.65)', display: 'block', marginBottom: '7px' }}>
+          <div style={{ marginTop: '14px', paddingTop: '14px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+            <label style={{ fontSize: '0.78rem', fontWeight: 700, color: 'rgba(255,255,255,0.65)', display: 'block', marginBottom: '8px' }}>
               🎨 Embed Accent Color
             </label>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -3231,49 +3304,54 @@ function ServerTagSection({ guildId, channels }) {
                   fontFamily: 'monospace', outline: 'none'
                 }}
               />
-              <div style={{ width: '38px', height: '38px', borderRadius: '8px', background: settings.embedColor, border: '1px solid rgba(255,255,255,0.2)', flexShrink: 0 }} />
+              <div style={{ width: '38px', height: '38px', borderRadius: '8px', background: settings.embedColor, border: '1px solid rgba(255,255,255,0.2)', flexShrink: 0, boxShadow: `0 0 12px ${settings.embedColor}55` }} />
             </div>
           </div>
         )}
       </div>
 
-      {/* Action Buttons */}
+      {/* ── Status Message ── */}
       {msg && (
-        <div style={{ fontSize: '0.85rem', marginBottom: '14px', textAlign: 'center', padding: '10px', borderRadius: '10px',
+        <div style={{
+          fontSize: '0.87rem', marginBottom: '14px', textAlign: 'center', padding: '12px 16px', borderRadius: '12px',
           background: msg.startsWith('✅') ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)',
-          border: msg.startsWith('✅') ? '1px solid rgba(34,197,94,0.25)' : '1px solid rgba(239,68,68,0.25)',
-          color: msg.startsWith('✅') ? '#34d399' : '#f87171' }}>
+          border: msg.startsWith('✅') ? '1px solid rgba(34,197,94,0.3)' : '1px solid rgba(239,68,68,0.3)',
+          color: msg.startsWith('✅') ? '#34d399' : '#f87171', fontWeight: 600
+        }}>
           {msg}
         </div>
       )}
 
+      {/* ── Action Buttons ── */}
       <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
         <button
           onClick={sendTest}
           disabled={testing || !settings.enabled || !settings.channelId}
+          title={!settings.enabled ? 'Enable the feature first' : !settings.channelId ? 'Select a channel first' : 'Send a test announcement'}
           style={{
             padding: '10px 20px', borderRadius: '10px',
             border: '1px solid rgba(88,101,242,0.4)',
-            background: 'rgba(88,101,242,0.15)',
-            color: (testing || !settings.enabled || !settings.channelId) ? 'rgba(255,255,255,0.3)' : '#818cf8',
-            fontWeight: 700, fontSize: '0.87rem', cursor: (testing || !settings.enabled || !settings.channelId) ? 'not-allowed' : 'pointer',
+            background: (testing || !settings.enabled || !settings.channelId) ? 'rgba(255,255,255,0.03)' : 'rgba(88,101,242,0.15)',
+            color: (testing || !settings.enabled || !settings.channelId) ? 'rgba(255,255,255,0.25)' : '#818cf8',
+            fontWeight: 700, fontSize: '0.87rem',
+            cursor: (testing || !settings.enabled || !settings.channelId) ? 'not-allowed' : 'pointer',
             fontFamily: "'Inter',sans-serif", transition: 'all 0.2s'
           }}
         >
-          {testing ? '⏳ Sending...' : '🧪 Send Test Announcement'}
+          {testing ? '⏳ Sending...' : '🧪 Send Test'}
         </button>
         <button
           onClick={save}
           disabled={saving}
           style={{
-            padding: '10px 26px', borderRadius: '10px', border: 'none',
-            background: saving ? 'rgba(88,101,242,0.4)' : 'linear-gradient(135deg,#5865F2,#7289DA)',
+            padding: '10px 28px', borderRadius: '10px', border: 'none',
+            background: saving ? 'rgba(88,101,242,0.35)' : 'linear-gradient(135deg,#5865F2,#7289DA)',
             color: '#fff', fontWeight: 800, fontSize: '0.9rem',
             cursor: saving ? 'not-allowed' : 'pointer', fontFamily: "'Inter',sans-serif",
-            boxShadow: saving ? 'none' : '0 4px 16px rgba(88,101,242,0.4)', transition: 'all 0.2s'
+            boxShadow: saving ? 'none' : '0 4px 18px rgba(88,101,242,0.45)', transition: 'all 0.2s'
           }}
         >
-          {saving ? 'Saving...' : '💾 Save Settings'}
+          {saving ? '⏳ Saving...' : '💾 Save Settings'}
         </button>
       </div>
     </div>
