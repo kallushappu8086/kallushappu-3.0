@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { api } from '../utils/api';
+import ServerTagSection from '../components/ServerTagSection';
 
 /* ─────────── helpers ─────────── */
 const PERIODS = [
@@ -3004,7 +3005,8 @@ export default function Dashboard({ guildId, guildName, guildIcon, memberCount, 
 
   const NAV_ITEMS = [
     { key: 'stats', label: '📊 Server Activity', icon: '📊' },
-    { key: 'boostPerks', label: '🚀 Boost Perks', icon: '🚀', isNew: true }
+    { key: 'boostPerks', label: '🚀 Boost Perks', icon: '🚀' },
+    { key: 'serverTag', label: '🏷️ Server Tag', icon: '🏷️', isNew: true }
   ];
 
   return (
@@ -3059,17 +3061,19 @@ export default function Dashboard({ guildId, guildName, guildIcon, memberCount, 
                 style={{
                   display: 'flex', alignItems: 'center', gap: '10px', padding: '11px 24px', borderRadius: '14px',
                   border: isActive
-                    ? (item.key === 'boostPerks' ? '1px solid rgba(244,63,94,0.6)' : '1px solid rgba(147,51,234,0.6)')
+                    ? (item.key === 'boostPerks' ? '1px solid rgba(244,63,94,0.6)' : (item.key === 'serverTag' ? '1px solid rgba(168,85,247,0.6)' : '1px solid rgba(147,51,234,0.6)'))
                     : '1px solid rgba(255,255,255,0.08)',
                   background: isActive
                     ? (item.key === 'boostPerks'
                       ? 'linear-gradient(135deg, rgba(244,63,94,0.25) 0%, rgba(13,16,23,0.95) 100%)'
-                      : 'linear-gradient(135deg, rgba(147,51,234,0.25) 0%, rgba(13,16,23,0.95) 100%)')
+                      : (item.key === 'serverTag'
+                        ? 'linear-gradient(135deg, rgba(168,85,247,0.25) 0%, rgba(13,16,23,0.95) 100%)'
+                        : 'linear-gradient(135deg, rgba(147,51,234,0.25) 0%, rgba(13,16,23,0.95) 100%)'))
                     : 'rgba(255,255,255,0.04)',
                   color: isActive ? '#fff' : 'rgba(255,255,255,0.55)',
                   fontWeight: 800, fontSize: '0.92rem', cursor: 'pointer', transition: 'all 0.2s',
                   boxShadow: isActive
-                    ? (item.key === 'boostPerks' ? '0 4px 20px rgba(244,63,94,0.25)' : '0 4px 20px rgba(147,51,234,0.25)')
+                    ? (item.key === 'boostPerks' ? '0 4px 20px rgba(244,63,94,0.25)' : (item.key === 'serverTag' ? '0 4px 20px rgba(168,85,247,0.25)' : '0 4px 20px rgba(147,51,234,0.25)'))
                     : 'none'
                 }}
               >
@@ -3077,7 +3081,7 @@ export default function Dashboard({ guildId, guildName, guildIcon, memberCount, 
                 <span>{item.label}</span>
                 {item.isNew && (
                   <span style={{
-                    fontSize: '0.66rem', background: 'linear-gradient(135deg,#f43f5e,#be123c)', color: '#fff',
+                    fontSize: '0.66rem', background: 'linear-gradient(135deg,#a855f7,#7c3aed)', color: '#fff',
                     padding: '2px 7px', borderRadius: '10px', fontWeight: 900, letterSpacing: '0.04em'
                   }}>
                     NEW
@@ -3115,6 +3119,21 @@ export default function Dashboard({ guildId, guildName, guildIcon, memberCount, 
               </p>
             </div>
             <BoostPerksSection guildId={guildId} guildName={guildName} channels={channels} roles={roles} user={user} />
+          </div>
+        )}
+
+        {/* Section 3: Server Tag */}
+        {activeSection === 'serverTag' && (
+          <div>
+            <div style={{ marginBottom: '32px' }}>
+              <h1 style={{ margin: '0 0 6px', fontSize: '1.8rem', fontWeight: 900, background: 'linear-gradient(135deg,#c4b5fd 0%,#a855f7 50%,#7c3aed 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+                🏷️ Server Tag Announcements
+              </h1>
+              <p style={{ margin: 0, color: 'rgba(255,255,255,0.4)', fontSize: '0.9rem' }}>
+                Detect when members put the server tag in their name and celebrate them with automated channel announcements
+              </p>
+            </div>
+            <ServerTagSection guildId={guildId} guildName={guildName} channels={channels} roles={roles} user={user} />
           </div>
         )}
       </div>

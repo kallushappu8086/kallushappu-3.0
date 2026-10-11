@@ -308,6 +308,26 @@ export const api = {
   testBoostAutoDm: (guildId, userId) => request(`/boost-perks/${guildId}/test-auto-dm`, {
     method: 'POST',
     body: JSON.stringify({ userId })
+  }),
+
+  // Server Tag
+  getServerTagSettings: (guildId) => request(`/server-tag/${guildId}/settings`),
+  saveServerTagSettings: (guildId, data) => request(`/server-tag/${guildId}/settings`, {
+    method: 'POST',
+    body: JSON.stringify(data)
+  }),
+  getServerTagMembers: (guildId, params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    return request(`/server-tag/${guildId}/members${q ? `?${q}` : ''}`);
+  },
+  syncServerTagMembers: (guildId, data = {}) => request(`/server-tag/${guildId}/sync`, {
+    method: 'POST',
+    body: JSON.stringify(data)
+  }),
+  sendTestServerTagAnnouncement: (guildId, data = {}) => request(`/server-tag/${guildId}/test`, {
+    method: 'POST',
+    body: JSON.stringify(data)
   })
 };
+
 
